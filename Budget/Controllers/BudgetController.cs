@@ -37,6 +37,7 @@ namespace Budget.Controllers
         //[Route("users")]
         //TODO: either remove the route as no one should be able to get other user info
         //      or set it to Admin role
+        [Authorize(Roles ="Admin")]
         [HttpGet("users")]
         public async Task<IEnumerable<UserDto>> GetUsersAsync()
         {

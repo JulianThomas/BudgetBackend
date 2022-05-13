@@ -1,6 +1,6 @@
 ﻿namespace Budget.Settings
 {
-    public class SqlSettings
+    public class PostgresSqlSettings
     {
         public string Host { get; set; }
         public int Port { get; set; }
@@ -12,7 +12,7 @@
         {
             get
             {
-                return $"Server={Host},{Port};Initial Catalog={Database};User ID ={Username};Password={Password}";
+                return $"Server={Host};Database={Database};Port={Port};User Id={Username};Password={Password}";
             }
         }
     }

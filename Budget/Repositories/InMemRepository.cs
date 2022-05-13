@@ -1,6 +1,12 @@
 ﻿using Budget.Entities;
 using System.Globalization;
-
+/// <summary>
+/// Not in use anymore
+/// Performing actions on actual database
+/// 
+/// Can be deleted. 
+///
+/// </summary>
 namespace Budget.Repositories
 {
     public class InMemRepository 

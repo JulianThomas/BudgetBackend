@@ -32,9 +32,13 @@ builder.Services.AddSingleton<IMongoClient>(ServiceProvider =>
 
 builder.Services.AddDbContext<ApplicationDbContext>(
     options => {
-        var msdbSettings = configuration.GetSection(nameof(SqlSettings)).Get<SqlSettings>();
-        options.UseSqlServer(msdbSettings.ConnectionString);
-        }
+        ////Moving to postgres from mssql
+        //var msdbSettings = configuration.GetSection(nameof(MsSqlSettings)).Get<MsSqlSettings>();
+        //options.UseSqlServer(msdbSettings.ConnectionString); 
+        var postgresSettings = configuration.GetSection(nameof(PostgresSqlSettings))
+            .Get<PostgresSqlSettings>();
+        options.UseNpgsql(postgresSettings.ConnectionString);
+    }
     );
 
 
@@ -83,6 +87,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
