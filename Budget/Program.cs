@@ -2,6 +2,7 @@ using Budget.Authentication;
 using Budget.Repositories;
 using Budget.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -9,7 +10,9 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
+using System.Net.Mime;
 using System.Text;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,19 +22,19 @@ BsonSerializer.RegisterSerializer(new GuidSerializer(BsonType.String));
 BsonSerializer.RegisterSerializer(new DateTimeSerializer(BsonType.String));
 // Add services to the container.
 builder.Services.AddSingleton<IUsersRepository, MongoDBItemsRepository>();
+var mongoSettings = configuration
+    .GetSection(nameof(MongoDBSettings))
+    .Get<MongoDBSettings>();
 
 builder.Services.AddSingleton<IMongoClient>(ServiceProvider =>
-{
-    var settings = configuration
-        .GetSection(nameof(MongoDBSettings))
-        .Get<MongoDBSettings>();
-    return new MongoClient(settings.ConnectionString);
-});
+    new MongoClient(mongoSettings.ConnectionString)
+);
 
 builder.Services.AddDbContext<ApplicationDbContext>(
-    options => options.UseSqlServer(
-        configuration.GetConnectionString("ConnStr")
-        )
+    options => {
+        var msdbSettings = configuration.GetSection(nameof(SqlSettings)).Get<SqlSettings>();
+        options.UseSqlServer(msdbSettings.ConnectionString);
+        }
     );
 
 
@@ -63,6 +66,14 @@ builder.Services.AddAuthentication(options =>
         };
     });
 
+builder.Services.AddHealthChecks()
+    .AddMongoDb(
+        mongoSettings.ConnectionString, 
+        name:"mongodb", 
+        timeout:TimeSpan.FromSeconds(10),
+        tags: new [] {"ready"}
+    );
+
 
 builder.Services.AddControllers(options => {
     options.SuppressAsyncSuffixInActionNames = false;
@@ -85,5 +96,30 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate=(check) =>check.Tags.Contains("ready"),
+    ResponseWriter = async (context, report) =>
+    {
+        var result = JsonSerializer.Serialize(
+            new
+            {
+                status = report.Status.ToString(),
+                checks = report.Entries.Select(entry => new
+                {
+                    name = entry.Key,
+                    status = entry.Value.Status.ToString(),
+                    exception = entry.Value.Exception != null ? entry.Value.Exception.Message : "none",
+                    duration = entry.Value.Duration.ToString(),
+                })
+            });
+        context.Response.ContentType = MediaTypeNames.Application.Json;
+        await context.Response.WriteAsync(result);
+    }
+});
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = (_) => false 
+});
 
 app.Run();
