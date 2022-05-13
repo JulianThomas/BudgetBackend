@@ -22,24 +22,20 @@ BsonSerializer.RegisterSerializer(new GuidSerializer(BsonType.String));
 BsonSerializer.RegisterSerializer(new DateTimeSerializer(BsonType.String));
 // Add services to the container.
 builder.Services.AddSingleton<IUsersRepository, MongoDBItemsRepository>();
-var mongoSettings = configuration
-    .GetSection(nameof(MongoDBSettings))
-    .Get<MongoDBSettings>();
-
+//var mongoSettings = configuration
+//    .GetSection(nameof(MongoDBSettings))
+//    .Get<MongoDBSettings>();
+var mongoSettings = MongoClientSettings
+    .FromConnectionString(configuration["MongoDBConnStr"]);
+mongoSettings.ServerApi = new ServerApi(ServerApiVersion.V1);
 builder.Services.AddSingleton<IMongoClient>(ServiceProvider =>
-    new MongoClient(mongoSettings.ConnectionString)
+    new MongoClient(mongoSettings)
 );
 
 builder.Services.AddDbContext<ApplicationDbContext>(
     options => {
-        ////Moving to postgres from mssql
-        //var msdbSettings = configuration.GetSection(nameof(MsSqlSettings)).Get<MsSqlSettings>();
-        //options.UseSqlServer(msdbSettings.ConnectionString); 
-        var postgresSettings = configuration.GetSection(nameof(PostgresSqlSettings))
-            .Get<PostgresSqlSettings>();
-        options.UseNpgsql(postgresSettings.ConnectionString);
-    }
-    );
+        options.UseNpgsql(configuration["PostgresConnStr"]);
+    });
 
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
@@ -72,7 +68,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddHealthChecks()
     .AddMongoDb(
-        mongoSettings.ConnectionString, 
+        configuration["MongoDBConnStr"], 
         name:"mongodb", 
         timeout:TimeSpan.FromSeconds(10),
         tags: new [] {"ready"}
