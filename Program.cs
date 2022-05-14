@@ -15,7 +15,7 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-Console.WriteLine("_____________________");
+
 ConfigurationManager configuration = builder.Configuration;
 builder.Configuration.AddEnvironmentVariables();
 
@@ -25,14 +25,14 @@ BsonSerializer.RegisterSerializer(new DateTimeSerializer(BsonType.String));
 
 builder.Services.AddSingleton<IUsersRepository, MongoDBItemsRepository>();
 var mongoSettings = MongoClientSettings
-    .FromConnectionString(Environment.GetEnvironmentVariable("MongoDBConnStr"));
+    .FromConnectionString(configuration["MongoDBConnStr"]);
 mongoSettings.ServerApi = new ServerApi(ServerApiVersion.V1);
 builder.Services.AddSingleton<IMongoClient>(ServiceProvider =>
     new MongoClient(mongoSettings)
 );
 
 
-var pgUri = new Uri(Environment.GetEnvironmentVariable("DATABASE_URL"));
+var pgUri = new Uri(configuration["DATABASE_URL"]);
 var username = pgUri.UserInfo.Split(':')[0];
 var password = pgUri.UserInfo.Split(':')[1];
 string npgconnstr = "Server=" + pgUri.Host + 
@@ -79,6 +79,11 @@ builder.Services.AddHealthChecks()
         name:"mongodb", 
         timeout:TimeSpan.FromSeconds(10),
         tags: new [] {"ready"}
+    ).AddNpgSql(
+        configuration["DATABASE_URL"],
+        name:"postgres",
+        timeout:TimeSpan.FromSeconds(10),
+        tags: new [] {"ready"}
     );
 
 
@@ -92,21 +97,43 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
 }
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHealthChecks("/health/ready", new HealthCheckOptions
+app.MapHealthChecks("/health/mongo", new HealthCheckOptions
 {
     Predicate=(check) =>check.Tags.Contains("ready"),
+    ResponseWriter = async (context, report) =>
+    {
+        var result = JsonSerializer.Serialize(
+            new
+            {
+                status = report.Status.ToString(),
+                checks = report.Entries.Select(entry => new
+                {
+                    name = entry.Key,
+                    status = entry.Value.Status.ToString(),
+                    exception = entry.Value.Exception != null ? entry.Value.Exception.Message : "none",
+                    duration = entry.Value.Duration.ToString(),
+                })
+            });
+        context.Response.ContentType = MediaTypeNames.Application.Json;
+        await context.Response.WriteAsync(result);
+    }
+});
+app.MapHealthChecks("/health/postgres", new HealthCheckOptions
+{
+    Predicate = (check) => check.Tags.Contains("ready"),
     ResponseWriter = async (context, report) =>
     {
         var result = JsonSerializer.Serialize(
