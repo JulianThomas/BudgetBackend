@@ -94,7 +94,7 @@ namespace Budget.Controllers
         //[Route("items")]
         [HttpPost("items")]
         [ProducesResponseType(StatusCodes.Status201Created)]
-        public async Task<ActionResult<BudgetItemDto>> CreateItemAsync( CreateBudgetItemDto itemDto)
+        public async Task<ActionResult<BudgetItemDto>> CreateItemAsync( CreateBudgetItemsDto itemDto)
         {
             var userId = await GetCurrentUserIdAsync();
 
@@ -104,7 +104,7 @@ namespace Budget.Controllers
                 ItemName = itemDto.ItemName,
                 IsCredit = itemDto.IsCredit,
                 Amount = itemDto.Amount,
-                Date = itemDto.Date,
+                Date = itemDto.Date.HasValue ? itemDto.Date.Value : DateTime.UtcNow,
             };
             await repository.CreateBudgetItemAsync(userId, item);
 
@@ -130,7 +130,7 @@ namespace Budget.Controllers
         //[Route("items")]
         [HttpPut("items/{itemId}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<ActionResult> UpdateItemAsync( CreateBudgetItemDto itemDto, Guid itemId)
+        public async Task<ActionResult> UpdateItemAsync( UpdateBudgetItemsDto itemDto, Guid itemId)
         {
             //Console.WriteLine(itemDto.ToString(), itemId);
             var userId = await GetCurrentUserIdAsync();

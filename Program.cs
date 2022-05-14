@@ -1,6 +1,5 @@
 using Budget.Authentication;
 using Budget.Repositories;
-using Budget.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
@@ -22,24 +21,40 @@ BsonSerializer.RegisterSerializer(new GuidSerializer(BsonType.String));
 BsonSerializer.RegisterSerializer(new DateTimeSerializer(BsonType.String));
 // Add services to the container.
 builder.Services.AddSingleton<IUsersRepository, MongoDBItemsRepository>();
-var mongoSettings = configuration
-    .GetSection(nameof(MongoDBSettings))
-    .Get<MongoDBSettings>();
-
+//var mongoSettings = configuration
+//    .GetSection(nameof(MongoDBSettings))
+//    .Get<MongoDBSettings>();
+var mongoSettings = MongoClientSettings
+    .FromConnectionString(configuration["MongoDBConnStr"]);
+mongoSettings.ServerApi = new ServerApi(ServerApiVersion.V1);
 builder.Services.AddSingleton<IMongoClient>(ServiceProvider =>
-    new MongoClient(mongoSettings.ConnectionString)
+    new MongoClient(mongoSettings)
 );
+
+
+var uri = new Uri(configuration["PostgresConnStr"]);
+
+var username = uri.UserInfo.Split(':')[0];
+var password = uri.UserInfo.Split(':')[1];
+string npgconnstr = "Server=" + uri.Host + 
+    "; Database="+ uri.AbsolutePath.Substring(1) + 
+    "; Username="+ username + "; Password="+ password + 
+    "; Port="+ uri.Port + "; SSL Mode=Require; Trust Server Certificate=true;";
+
+
 
 builder.Services.AddDbContext<ApplicationDbContext>(
     options => {
-        ////Moving to postgres from mssql
-        //var msdbSettings = configuration.GetSection(nameof(MsSqlSettings)).Get<MsSqlSettings>();
-        //options.UseSqlServer(msdbSettings.ConnectionString); 
-        var postgresSettings = configuration.GetSection(nameof(PostgresSqlSettings))
-            .Get<PostgresSqlSettings>();
-        options.UseNpgsql(postgresSettings.ConnectionString);
+        //var postgresSettings = configuration.GetSection(nameof(NpgSqlSettings))
+        //     .Get<NpgSqlSettings>();
+        //options.UseNpgsql(postgresSettings.ConnectionString);
+        options.UseNpgsql(npgconnstr);
     }
     );
+//builder.Services.AddDbContext<ApplicationDbContext>(
+//    options => {
+//        options.UseNpgsql(configuration["PostgresConnStr"]);
+//    });
 
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
@@ -72,7 +87,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddHealthChecks()
     .AddMongoDb(
-        mongoSettings.ConnectionString, 
+        configuration["MongoDBConnStr"], 
         name:"mongodb", 
         timeout:TimeSpan.FromSeconds(10),
         tags: new [] {"ready"}

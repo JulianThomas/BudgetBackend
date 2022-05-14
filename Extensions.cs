@@ -19,6 +19,7 @@ namespace Budget
 
         public static BudgetItemDto AsItemDto(this BudgetItem item)
         {
+            
             return new BudgetItemDto
             {
                 ItemId = item.ItemId,
