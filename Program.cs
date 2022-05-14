@@ -79,14 +79,13 @@ builder.Services.AddHealthChecks()
         configuration["MongoDBConnStr"],
         name: "mongo",
         timeout: TimeSpan.FromSeconds(10),
-        tags: new[] { "ready" }
-    );
-builder.Services.AddHealthChecks()
+        tags: new[] { "ready" , "mongo" }
+    )
     .AddNpgSql(
-        configuration["DATABASE_URL"],
+        npgconnstr,
         name:"postgres",
         timeout:TimeSpan.FromSeconds(10),
-        tags: new [] {"ready"}
+        tags: new [] {"ready", "postgres"}
     );
 
 
@@ -116,7 +115,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health/mongo", new HealthCheckOptions
 {
-    Predicate=(check) =>check.Tags.Contains("ready"),
+    Predicate=(check) =>check.Tags.Contains("mongo"),
     ResponseWriter = async (context, report) =>
     {
         var result = JsonSerializer.Serialize(
@@ -137,7 +136,7 @@ app.MapHealthChecks("/health/mongo", new HealthCheckOptions
 });
 app.MapHealthChecks("/health/postgres", new HealthCheckOptions
 {
-    Predicate = (check) => check.Tags.Contains("ready"),
+    Predicate = (check) => check.Tags.Contains("postgres"),
     ResponseWriter = async (context, report) =>
     {
         var result = JsonSerializer.Serialize(
