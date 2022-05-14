@@ -20,10 +20,8 @@ ConfigurationManager configuration = builder.Configuration;
 BsonSerializer.RegisterSerializer(new GuidSerializer(BsonType.String));
 BsonSerializer.RegisterSerializer(new DateTimeSerializer(BsonType.String));
 // Add services to the container.
+
 builder.Services.AddSingleton<IUsersRepository, MongoDBItemsRepository>();
-//var mongoSettings = configuration
-//    .GetSection(nameof(MongoDBSettings))
-//    .Get<MongoDBSettings>();
 var mongoSettings = MongoClientSettings
     .FromConnectionString(configuration["MongoDBConnStr"]);
 mongoSettings.ServerApi = new ServerApi(ServerApiVersion.V1);
@@ -32,35 +30,23 @@ builder.Services.AddSingleton<IMongoClient>(ServiceProvider =>
 );
 
 
-var uri = new Uri(configuration["PostgresConnStr"]);
-
-var username = uri.UserInfo.Split(':')[0];
-var password = uri.UserInfo.Split(':')[1];
-string npgconnstr = "Server=" + uri.Host + 
-    "; Database="+ uri.AbsolutePath.Substring(1) + 
+var pgUri = new Uri(configuration["DATABASE_URL"]);
+var username = pgUri.UserInfo.Split(':')[0];
+var password = pgUri.UserInfo.Split(':')[1];
+string npgconnstr = "Server=" + pgUri.Host + 
+    "; Database="+ pgUri.AbsolutePath.Substring(1) + 
     "; Username="+ username + "; Password="+ password + 
-    "; Port="+ uri.Port + "; SSL Mode=Require; Trust Server Certificate=true;";
-
-
+    "; Port="+ pgUri.Port + "; SSL Mode=Require; Trust Server Certificate=true;";
 
 builder.Services.AddDbContext<ApplicationDbContext>(
     options => {
-        //var postgresSettings = configuration.GetSection(nameof(NpgSqlSettings))
-        //     .Get<NpgSqlSettings>();
-        //options.UseNpgsql(postgresSettings.ConnectionString);
         options.UseNpgsql(npgconnstr);
     }
     );
-//builder.Services.AddDbContext<ApplicationDbContext>(
-//    options => {
-//        options.UseNpgsql(configuration["PostgresConnStr"]);
-//    });
-
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
-
 
 builder.Services.AddAuthentication(options =>
 {
