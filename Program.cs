@@ -13,6 +13,7 @@ using System.Net.Mime;
 using System.Text;
 using System.Text.Json;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -75,16 +76,19 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddHealthChecks()
     .AddMongoDb(
-        configuration["MongoDBConnStr"], 
-        name:"mongodb", 
-        timeout:TimeSpan.FromSeconds(10),
-        tags: new [] {"ready"}
-    ).AddNpgSql(
+        configuration["MongoDBConnStr"],
+        name: "mongo",
+        timeout: TimeSpan.FromSeconds(10),
+        tags: new[] { "ready" }
+    );
+builder.Services.AddHealthChecks()
+    .AddNpgSql(
         configuration["DATABASE_URL"],
         name:"postgres",
         timeout:TimeSpan.FromSeconds(10),
         tags: new [] {"ready"}
     );
+
 
 
 builder.Services.AddControllers(options => {
