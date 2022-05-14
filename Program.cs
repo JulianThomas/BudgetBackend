@@ -15,6 +15,7 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
+Console.WriteLine("_____________________");
 ConfigurationManager configuration = builder.Configuration;
 builder.Configuration.AddEnvironmentVariables();
 
@@ -24,14 +25,14 @@ BsonSerializer.RegisterSerializer(new DateTimeSerializer(BsonType.String));
 
 builder.Services.AddSingleton<IUsersRepository, MongoDBItemsRepository>();
 var mongoSettings = MongoClientSettings
-    .FromConnectionString(System.Environment.GetEnvironmentVariable("MongoDBConnStr"));
+    .FromConnectionString(Environment.GetEnvironmentVariable("MongoDBConnStr"));
 mongoSettings.ServerApi = new ServerApi(ServerApiVersion.V1);
 builder.Services.AddSingleton<IMongoClient>(ServiceProvider =>
     new MongoClient(mongoSettings)
 );
 
 
-var pgUri = new Uri(System.Environment.GetEnvironmentVariable("DATABASE_URL"));
+var pgUri = new Uri(Environment.GetEnvironmentVariable("DATABASE_URL"));
 var username = pgUri.UserInfo.Split(':')[0];
 var password = pgUri.UserInfo.Split(':')[1];
 string npgconnstr = "Server=" + pgUri.Host + 
